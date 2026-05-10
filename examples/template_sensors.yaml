@@ -1,0 +1,164 @@
+template:
+  - sensor:
+      - name: "Atmoce Grid Consumption"
+        unique_id: atmoce_grid_consumption
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_grid_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set p = states('sensor.atmoce_grid_power') | float(0) %}
+          {{ p if p > 0 else 0 }}
+
+      - name: "Atmoce Grid Feed In"
+        unique_id: atmoce_grid_feed_in
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_grid_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set p = states('sensor.atmoce_grid_power') | float(0) %}
+          {{ (-p) if p < 0 else 0 }}
+
+      - name: "Atmoce Battery Charging Power"
+        unique_id: atmoce_battery_charging_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_battery_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set p = states('sensor.atmoce_battery_power') | float(0) %}
+          {{ (-p) if p < 0 else 0 }}
+
+      - name: "Atmoce Battery Discharging Power"
+        unique_id: atmoce_battery_discharging_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_battery_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set p = states('sensor.atmoce_battery_power') | float(0) %}
+          {{ p if p > 0 else 0 }}
+
+      - name: "Atmoce Solar To Battery"
+        unique_id: atmoce_solar_to_battery
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_pv_power') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_battery_charging_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set pv = states('sensor.atmoce_pv_power') | float(0) %}
+          {% set batt_charge = states('sensor.atmoce_battery_charging_power') | float(0) %}
+          {{ [batt_charge, pv] | min if batt_charge > 0 else 0 }}
+
+      - name: "Atmoce Grid To Battery"
+        unique_id: atmoce_grid_to_battery
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_battery_charging_power') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_solar_to_battery') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set batt_charge = states('sensor.atmoce_battery_charging_power') | float(0) %}
+          {% set solar_to_batt = states('sensor.atmoce_solar_to_battery') | float(0) %}
+          {% set val = batt_charge - solar_to_batt %}
+          {{ val if val > 0 else 0 }}
+
+      - name: "Atmoce Battery To House"
+        unique_id: atmoce_battery_to_house
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_battery_discharging_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set batt_dis = states('sensor.atmoce_battery_discharging_power') | float(0) %}
+          {{ batt_dis if batt_dis > 0 else 0 }}
+
+      - name: "Atmoce Battery To Grid"
+        unique_id: atmoce_battery_to_grid
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          0
+
+      - name: "Atmoce Solar Consumption"
+        unique_id: atmoce_solar_consumption
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_pv_power') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_battery_power') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_grid_power') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set pv = states('sensor.atmoce_pv_power') | float(0) %}
+          {% set batt = states('sensor.atmoce_battery_power') | float(0) %}
+          {% set grid = states('sensor.atmoce_grid_power') | float(0) %}
+          {% set batt_charge = (-batt) if batt < 0 else 0 %}
+          {% set export = (-grid) if grid < 0 else 0 %}
+          {% set val = pv - batt_charge - export %}
+          {{ val if val > 0 else 0 }}
+
+      - name: "Atmoce House Total Consumption"
+        unique_id: atmoce_house_total_consumption
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.atmoce_solar_consumption') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_battery_to_house') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_grid_consumption') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set solar = states('sensor.atmoce_solar_consumption') | float(0) %}
+          {% set battery = states('sensor.atmoce_battery_to_house') | float(0) %}
+          {% set grid = states('sensor.atmoce_grid_consumption') | float(0) %}
+          {{ solar + battery + grid }}
+
+      - name: "Atmoce House Source"
+        unique_id: atmoce_house_source
+        state: >
+          {% set solar = states('sensor.atmoce_solar_consumption') | float(0) %}
+          {% set battery = states('sensor.atmoce_battery_to_house') | float(0) %}
+          {% set grid = states('sensor.atmoce_grid_consumption') | float(0) %}
+          {% if solar > 0 and battery == 0 and grid == 0 %}
+            Solar
+          {% elif solar == 0 and battery > 0 and grid == 0 %}
+            Battery
+          {% elif solar == 0 and battery == 0 and grid > 0 %}
+            Grid
+          {% elif solar > 0 and battery > 0 and grid == 0 %}
+            Solar + Battery
+          {% elif solar > 0 and battery == 0 and grid > 0 %}
+            Solar + Grid
+          {% elif solar == 0 and battery > 0 and grid > 0 %}
+            Battery + Grid
+          {% elif solar > 0 and battery > 0 and grid > 0 %}
+            Solar + Battery + Grid
+          {% else %}
+            Idle / Unknown
+          {% endif %}
+
+      - name: "Atmoce Solar To House Daily"
+        unique_id: atmoce_solar_to_house_daily
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        availability: >
+          {{ states('sensor.atmoce_pv_energy_daily') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_grid_export_energy_daily') not in ['unknown', 'unavailable', 'none']
+             and states('sensor.atmoce_battery_charge_energy_daily') not in ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {% set pv = states('sensor.atmoce_pv_energy_daily') | float(0) %}
+          {% set export = states('sensor.atmoce_grid_export_energy_daily') | float(0) %}
+          {% set batt = states('sensor.atmoce_battery_charge_energy_daily') | float(0) %}
+          {% set val = pv - export - batt %}
+          {{ val if val > 0 else 0 }}

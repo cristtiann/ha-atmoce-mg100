@@ -1,0 +1,251 @@
+type: vertical-stack
+cards:
+  - type: custom:tesla-style-solar-power-card
+    show_w_not_kw: 1
+    name: Real time consumption!
+    grid_to_house_entity: sensor.atmoce_grid_consumption
+    generation_to_house_entity: sensor.atmoce_solar_consumption
+    generation_to_grid_entity: sensor.atmoce_grid_feed_in
+    generation_to_battery_entity: sensor.atmoce_solar_to_battery
+    grid_to_battery_entity: sensor.atmoce_grid_to_battery
+    battery_to_house_entity: sensor.atmoce_battery_to_house
+    battery_to_grid_entity: sensor.atmoce_battery_to_grid
+    battery_extra_entity: sensor.atmoce_battery_soc
+    speed_factor: 0.05
+    show_gap: true
+  - type: custom:mushroom-template-card
+    primary: >
+      {% set solar = states('sensor.atmoce_solar_to_house_daily') | float(0) %}
+      {% set batt = states('sensor.atmoce_battery_discharge_energy_daily') |
+      float(0) %} {% set grid = states('sensor.atmoce_grid_import_energy_daily')
+      | float(0) %} {% set total = solar + batt + grid %} House today: {{ total
+      | round(2) }} kWh 
+    secondary: >
+      {% set solar = states('sensor.atmoce_solar_to_house_daily') | float(0) %}
+      {% set batt = states('sensor.atmoce_battery_discharge_energy_daily') |
+      float(0) %} {% set grid = states('sensor.atmoce_grid_import_energy_daily')
+      | float(0) %} {% set total = solar + batt + grid %} {% if total > 0 %} ☀️
+      From Solar: {{ (solar / total * 100) | round(1) }}% ({{ solar | round(2)
+      }} kWh)
+
+      🔋 From Battery: {{ (batt / total * 100) | round(1) }}% ({{ batt |
+      round(2) }} kWh)
+
+      ⚡ From Grid: {{ (grid / total * 100) | round(1) }}% ({{ grid | round(2) }}
+      kWh) {% else %} No data yet {% endif %} 
+    multiline_secondary: true
+    icon: mdi:home-analytics
+    icon_color: blue
+    card_mod:
+      style: |
+        mushroom-state-info$:
+          .primary {
+            font-size: 40px !important;
+            font-weight: 700 !important;
+            line-height: 5 !important;
+          }
+          .secondary {
+            font-size: 30px !important;
+            line-height: 5 !important;
+            white-space: pre-line !important;
+          }
+        ha-card {
+          padding-top: 5px;
+          padding-bottom: 5px;
+        }    
+  - type: custom:mushroom-template-card
+    primary: >
+      {% set total = states('sensor.atmoce_pv_energy_daily') | float(0) %} Solar
+      today: {{ total | round(2) }} kWh    
+    secondary: >
+      {% set home = states('sensor.atmoce_solar_to_house_daily') | float(0) %}
+      {% set batt = states('sensor.atmoce_battery_charge_energy_daily') |
+      float(0) %} {% set grid = states('sensor.atmoce_grid_export_energy_daily')
+      | float(0) %} {% set total = states('sensor.atmoce_pv_energy_daily') |
+      float(0) %}   {% if total > 0 %} 🏠 To Home: {{ (home / total * 100) |
+      round(1) }}% ({{ home | round(2) }} kWh)
+
+      🔋 To Battery: {{ (batt / total * 100) | round(1) }}% ({{ batt | round(2)
+      }} kWh)
+
+      ⚡ To Grid: {{ (grid / total * 100) | round(1) }}% ({{ grid | round(2) }}
+      kWh) {% else %} No data yet {% endif %}  
+    multiline_secondary: true
+    icon: mdi:solar-power
+    icon_color: orange
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        primary: Grid
+        secondary: "{{ states('sensor.atmoce_grid_import_energy_daily') }} kWh"
+        icon: mdi:transmission-tower-import
+        icon_color: red
+        entity: sensor.atmoce_grid_import_energy_daily
+        fill_container: true
+        multiline_secondary: false
+      - type: custom:mushroom-template-card
+        primary: Export
+        secondary: "{{ states('sensor.atmoce_grid_export_energy_daily') }} kWh"
+        icon: mdi:transmission-tower-export
+        icon_color: yellow
+        entity: sensor.atmoce_grid_export_energy_daily
+        fill_container: true
+        multiline_secondary: false
+      - type: custom:mushroom-template-card
+        primary: Solar
+        secondary: "{{ states('sensor.atmoce_pv_energy_daily') }} kWh"
+        icon: mdi:solar-power
+        icon_color: green
+        entity: sensor.atmoce_pv_energy_daily
+        fill_container: true
+        multiline_secondary: false
+      - type: custom:mushroom-template-card
+        primary: Battery
+        secondary: "{{ states('sensor.atmoce_battery_soc') }} %"
+        icon: mdi:battery
+        icon_color: orange
+        entity: sensor.atmoce_battery_soc
+        fill_container: true
+        multiline_secondary: false
+      - type: custom:mushroom-template-card
+        primary: Batt in
+        secondary: "{{ states('sensor.atmoce_battery_charge_energy_daily') }} kWh"
+        icon: mdi:battery-plus
+        icon_color: orange
+        entity: sensor.atmoce_battery_charge_energy_daily
+        fill_container: true
+        multiline_secondary: false
+      - type: custom:mushroom-template-card
+        primary: Batt out
+        secondary: "{{ states('sensor.atmoce_battery_discharge_energy_daily') }} kWh"
+        icon: mdi:battery-minus
+        icon_color: cyan
+        entity: sensor.atmoce_battery_discharge_energy_daily
+        fill_container: true
+        multiline_secondary: false
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: POWER
+      show_states: true
+      colorize_states: true
+    apex_config:
+      chart:
+        height: 350
+        zoom:
+          type: x
+          enabled: true
+          autoScaleYaxis: false
+        toolbar:
+          show: true
+          autoSelected: zoom
+      xaxis:
+        type: datetime
+      stroke:
+        width: 1
+        curve: smooth
+    all_series_config:
+      unit: kW
+      float_precision: 2
+    series:
+      - entity: sensor.atmoce_pv_power
+        name: Solar
+        color: green
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.atmoce_solar_consumption
+        name: House
+        color: deepskyblue
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.atmoce_grid_consumption
+        name: Import
+        color: red
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.atmoce_grid_feed_in
+        name: Export
+        color: yellow
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.atmoce_battery_charging_power
+        name: Batt In
+        color: orange
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.atmoce_battery_discharging_power
+        name: Batt Out
+        color: cyan
+        transform: return x / 1000;
+        group_by:
+          func: avg
+          duration: 1min
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: DAILY ENERGY
+      show_states: true
+      colorize_states: true
+    apex_config:
+      chart:
+        height: 350
+        zoom:
+          type: x
+          enabled: true
+          autoScaleYaxis: false
+        toolbar:
+          show: true
+          autoSelected: zoom
+      xaxis:
+        type: datetime
+    series:
+      - entity: sensor.atmoce_pv_energy_daily
+        name: Solar
+        type: column
+        color: green
+        group_by:
+          func: max
+          duration: 24h
+      - entity: sensor.atmoce_grid_export_energy_daily
+        name: Export
+        type: column
+        color: yellow
+        group_by:
+          func: max
+          duration: 24h
+      - entity: sensor.atmoce_grid_import_energy_daily
+        name: Import
+        type: column
+        color: red
+        group_by:
+          func: max
+          duration: 24h
+      - entity: sensor.atmoce_battery_charge_energy_daily
+        name: Batt In
+        type: column
+        color: orange
+        group_by:
+          func: max
+          duration: 24h
+      - entity: sensor.atmoce_battery_discharge_energy_daily
+        name: Batt Out
+        type: column
+        color: cyan
+        group_by:
+          func: max
+          duration: 24h
+    graph_span: 8d
+    span:
+      end: day
