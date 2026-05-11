@@ -141,7 +141,7 @@ It does not write Modbus registers and does not control the battery, inverter, c
 Created by:
 
 ```text
-@ettc solutions
+@ecristiann
 ```
 
 ## License
